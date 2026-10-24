@@ -242,8 +242,16 @@ internal static class Engine {
     internal static string Shell(string value){return "'"+value.Replace("'","'\"'\"'")+"'";}
     internal static ProcessStartInfo StartInfo(string exe,IEnumerable<string> args){return new ProcessStartInfo(exe,Args(args)){UseShellExecute=false,CreateNoWindow=true,RedirectStandardInput=true,RedirectStandardOutput=true,RedirectStandardError=true,StandardOutputEncoding=Encoding.UTF8,StandardErrorEncoding=Encoding.UTF8};}
     internal static ProcessOutput Process(ProcessStartInfo info,int timeout,string input=null){
+        // Process.Start creates a text writer immediately; suppress its UTF-8 BOM without changing the console code page.
+        if(Console.InputEncoding.CodePage==65001&&Console.InputEncoding.GetPreamble().Length!=0)Console.InputEncoding=new UTF8Encoding(false);
         using(var p=new Process{StartInfo=info}){p.Start();var outbuf=new Capture(1024*1024);var errbuf=new Capture(128*1024);var o=outbuf.Read(p.StandardOutput);var e=errbuf.Read(p.StandardError);
-            var write=Task.Run(()=>{try{if(input!=null)p.StandardInput.Write(input);p.StandardInput.Close();}catch(IOException){}catch(ObjectDisposedException){}});
+            // The .NET Framework text writer inherits the console code page and can emit a BOM.
+            var write=Task.Run(()=>{
+                var bytes=new UTF8Encoding(false).GetBytes(input??"");
+                try{using(var stdin=p.StandardInput.BaseStream)stdin.Write(bytes,0,bytes.Length);}
+                catch(IOException){}catch(ObjectDisposedException){}
+                finally{Array.Clear(bytes,0,bytes.Length);}
+            });
             bool done=p.WaitForExit(timeout*1000);if(!done)KillTree(p);p.WaitForExit();Task.WaitAll(new[]{o,e,write},5000);
             return new ProcessOutput{Exit=p.ExitCode,Out=outbuf.ToString(),Err=errbuf.ToString(),Timeout=!done,Truncated=outbuf.Truncated};
         }

@@ -8,8 +8,9 @@ internal sealed class TestConfig {public int Port {get;set;}public string Passwo
 internal static class Tests {
     static int checks;static void Check(bool yes,string label){if(!yes)throw new Exception(label);checks++;Console.WriteLine("PASS "+label);}
     static void Fails(Action action,string code,string label){try{action();throw new Exception("Expected "+code);}catch(AccessException ex){Check(ex.Code==code,label+" ["+ex.Code+"]");}}
-    public static int Main(){Console.OutputEncoding=new UTF8Encoding(false);var cfg=Store.Parse<TestConfig>(Console.In.ReadToEnd());var store=new Store(cfg.Root,"ServerManagerTest/"+Guid.NewGuid().ToString("N")+"/");
+    public static int Main(){Console.OutputEncoding=new UTF8Encoding(false);Console.InputEncoding=new UTF8Encoding(true);var cfg=Store.Parse<TestConfig>(Console.In.ReadToEnd());var store=new Store(cfg.Root,"ServerManagerTest/"+Guid.NewGuid().ToString("N")+"/");
         try{
+            StdinTest();
             Fails(()=>Store.ValidateAlias("a\n"),"INVALID_ALIAS","reject newline alias");Fails(()=>Store.ValidateAlias("-bad"),"INVALID_ALIAS","reject SSH option alias");
             var p=new Profile{Alias="test-password",Group="中文分组",Host="127.0.0.1",Port=cfg.Port,User="tester",Auth="password",SudoSame=true};
             var bad=Store.Parse<Profile>(Store.Json(p));bad.Host="localhost\nProxyCommand anything";Fails(()=>Store.Validate(bad,false),"INVALID_HOST","reject SSH config injection");
@@ -41,6 +42,15 @@ internal static class Tests {
             Console.WriteLine("PASSED "+checks+" checks");return 0;
         }catch(AccessException ex){Console.WriteLine("FAIL "+ex.Code+" "+ex.Message+"\n"+ex.StackTrace);return 1;}catch(Exception ex){Console.WriteLine("FAIL "+ex.Message+"\n"+ex.StackTrace);return 1;}
         finally{try{foreach(var item in store.List())store.Delete(item);store.Recover();}catch{}}
+    }
+    static void StdinTest(){
+        var executable=Path.Combine(Environment.SystemDirectory,"WindowsPowerShell","v1.0","powershell.exe");
+        var arguments=new[]{"-NoLogo","-NoProfile","-Command","$stream=[Console]::OpenStandardInput();$buffer=New-Object IO.MemoryStream;$stream.CopyTo($buffer);[Console]::Write([Convert]::ToBase64String($buffer.ToArray()))"};
+        var input="synthetic stdin 中文\n";
+        var result=Engine.Process(Engine.StartInfo(executable,arguments),15,input);
+        Check(result.Exit==0&&result.Out==Convert.ToBase64String(new UTF8Encoding(false).GetBytes(input)),"stdin uses exact UTF-8 bytes without a console BOM");
+        result=Engine.Process(Engine.StartInfo(executable,arguments),15);
+        Check(result.Exit==0&&result.Out=="","empty stdin has no encoding preamble");
     }
     static void SftpTest(Profile p,TestConfig cfg){var path=Path.Combine(cfg.Root,"sftp_hosts");File.WriteAllText(path,p.HostKeys);try{using(var ask=new Askpass(p,new Secrets{Login=cfg.Password})){var aa=Engine.Options(p,path,true);aa.Add(p.User+"@"+p.Host);var info=Engine.StartInfo(Engine.Ssh("sftp"),aa);info.EnvironmentVariables["SSH_ASKPASS"]=Path.Combine(Engine.Bin,"server-askpass.exe");info.EnvironmentVariables["SSH_ASKPASS_REQUIRE"]="force";info.EnvironmentVariables["DISPLAY"]="ServerManager";info.EnvironmentVariables["SERVERMANAGER_PIPE"]=ask.Name;
         Check(!info.Arguments.Contains(cfg.Password)&&!info.EnvironmentVariables.Values.Cast<string>().Any(v=>v.Contains(cfg.Password)),"synthetic secret absent from process arguments and environment");
