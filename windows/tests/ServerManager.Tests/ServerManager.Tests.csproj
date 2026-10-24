@@ -1,0 +1,15 @@
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\build\Common.props" />
+  <PropertyGroup>
+    <ProjectGuid>{8D3A6900-CB15-57E9-B675-06DC84BD96C4}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ServerManager.Tests</AssemblyName>
+    <RootNamespace>ServerManager</RootNamespace>
+    <StartupObject>ServerManager.Tests</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Tests.cs" />
+    <ProjectReference Include="..\..\src\ServerManager.Core\ServerManager.Core.csproj"><Project>{E376DEFB-2D50-5C11-ADFC-7F695A666A70}</Project><Name>ServerManager.Core</Name></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

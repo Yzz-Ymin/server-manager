@@ -1,0 +1,10 @@
+artifacts/
+.venv/
+.vs/
+**/obj/
+**/bin/
+**/__pycache__/
+*.user
+*.suo
+application.json
+installation.json

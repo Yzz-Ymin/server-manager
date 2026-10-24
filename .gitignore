@@ -10,3 +10,5 @@ macos/dist/
 profile.json
 ssh_config
 known_hosts
+*.pfx
+*.p12

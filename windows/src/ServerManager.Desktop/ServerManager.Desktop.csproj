@@ -1,0 +1,24 @@
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\build\Common.props" />
+  <PropertyGroup>
+    <ProjectGuid>{2FE683D9-EED8-56EB-B33B-3A7E9192F1E3}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>ServerManager</AssemblyName>
+    <RootNamespace>ServerManager</RootNamespace>
+    <StartupObject>ServerManager.DesktopProgram</StartupObject>
+    <ApplicationIcon>..\..\assets\AppIcon.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Desktop.cs" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
+    <EmbeddedResource Include="Theme.xaml"><LogicalName>ServerManager.Theme.xaml</LogicalName></EmbeddedResource>
+    <Content Include="..\..\assets\AppIcon.ico"><Link>AppIcon.ico</Link><CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory></Content>
+    <ProjectReference Include="..\ServerManager.Core\ServerManager.Core.csproj"><Project>{E376DEFB-2D50-5C11-ADFC-7F695A666A70}</Project><Name>ServerManager.Core</Name></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>

@@ -1,0 +1,10 @@
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.gitignore text eol=lf
+*.zip binary
+*.dmg binary
+*.png binary
+*.icns binary
+.gitattributes text eol=lf
+SHA256SUMS text eol=lf

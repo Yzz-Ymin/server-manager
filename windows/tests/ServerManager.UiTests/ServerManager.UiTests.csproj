@@ -1,0 +1,22 @@
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\..\build\Common.props" />
+  <PropertyGroup>
+    <ProjectGuid>{1A6D2D03-554E-556B-B3FC-0F6D1432A99B}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>ServerManager.UiTests</AssemblyName>
+    <RootNamespace>ServerManager</RootNamespace>
+    <StartupObject>ServerManager.UiTests</StartupObject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="UiTests.cs" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="PresentationCore" />
+    <Reference Include="WindowsBase" />
+    <ProjectReference Include="..\..\src\ServerManager.Core\ServerManager.Core.csproj"><Project>{E376DEFB-2D50-5C11-ADFC-7F695A666A70}</Project><Name>ServerManager.Core</Name></ProjectReference>
+    <ProjectReference Include="..\..\src\ServerManager.Desktop\ServerManager.Desktop.csproj"><Project>{2FE683D9-EED8-56EB-B33B-3A7E9192F1E3}</Project><Name>ServerManager.Desktop</Name></ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
