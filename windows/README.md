@@ -6,6 +6,8 @@
 
 Windows 11、.NET Framework 4.8 和 Windows OpenSSH 客户端。可用 Visual Studio 的“.NET 桌面开发”工具打开解决方案；运行应用不需要 Python。
 
+部分 Windows 自带 OpenSSH 的主机密钥扫描器存在 [不支持已协商密钥交换算法的问题](https://github.com/PowerShell/Win32-OpenSSH/issues/2140)。遇到该特定错误时，应用会自动使用已登记安装的 Git for Windows 所附扫描器重试；仍需独立确认主机指纹。未安装兼容扫描器时会提示更新 Git for Windows 或 Windows OpenSSH，不会跳过主机校验或放宽算法。
+
 ## 构建与安装
 
 从仓库根目录进入 `windows` 目录，在 PowerShell 中执行：
@@ -41,7 +43,7 @@ EXE 与校验清单位于 `artifacts/packages`。构建会下载固定版本的�
 
 ## 签名与应用控制
 
-默认生成 `ServerManager-1.1.2-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。
+默认生成 `ServerManager-1.1.3-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。
 
 具备受信任代码签名证书后，可通过 `scripts/sign.ps1` 使用证书指纹和时间戳服务签名，再运行 `scripts/package.ps1 -RequireSigned` 生成带签名校验的发布包。签名工具使用 Windows SDK 的 SignTool，不接收或导出私钥。详情见 [微软代码签名说明](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/code-signing-for-smart-app-control)。
 

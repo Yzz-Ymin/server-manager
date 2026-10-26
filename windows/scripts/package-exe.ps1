@@ -1,7 +1,7 @@
 ﻿param([string]$PackagePath,[string]$CompilerPath)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
-if(-not $PackagePath){$PackagePath=Join-Path (Split-Path $projectRoot -Parent) 'packages\windows\ServerManager-1.1.2-windows-unsigned.zip'}
+if(-not $PackagePath){$PackagePath=Join-Path (Split-Path $projectRoot -Parent) 'packages\windows\ServerManager-1.1.3-windows-unsigned.zip'}
 $archive=(Resolve-Path -LiteralPath $PackagePath).Path
 if(-not $CompilerPath){
     $command=Get-Command ISCC.exe -ErrorAction SilentlyContinue
@@ -28,7 +28,7 @@ try{
     foreach($name in @('ServerManager.exe','server-access.exe','server-askpass.exe','ServerManager.Core.dll','AppIcon.ico','ServerManager.exe.config','server-access.exe.config','server-askpass.exe.config')){
         if(-not(Test-Path -LiteralPath (Join-Path $stage ('bin\'+$name)))){throw "安装包缺少 $name。"}
     }
-    @('# 服务器管理', '', '从桌面或开始菜单打开服务器管理。关闭窗口后驻留托盘，退出入口在托盘菜单。', '', '连接配置与密码由当前 Windows 用户保存。更新或卸载保留连接配置和凭据，不随安装包迁移到其他主机。', '', '更新前先从托盘退出，再运行新版 EXE 安装向导。卸载请使用 Windows 设置中的“已安装的应用”。', '', '如需助手集成，请使用 ZIP 包内的 scripts/install.ps1 -InstallSkill；变更安装目录后需重新绑定执行助手。', '', '连接元数据统一存于 %USERPROFILE%\.server-manager；首次启动迁移旧配置并保留源文件，密码仍保存在 Windows 凭据管理器。', '', '需要 Windows 11、.NET Framework 4.8 和 OpenSSH 客户端，仅支持 Linux 远端。', '', '此为未签名开发构建。Windows 应用控制可能拒绝启动，安装前检查失败时保留现有版本。') | Set-Content -LiteralPath (Join-Path $stage 'README.md') -Encoding UTF8
+    @('# 服务器管理', '', '从桌面或开始菜单打开服务器管理。关闭窗口后驻留托盘，退出入口在托盘菜单。', '', '连接配置与密码由当前 Windows 用户保存。更新或卸载保留连接配置和凭据，不随安装包迁移到其他主机。', '', '更新前先从托盘退出，再运行新版 EXE 安装向导。卸载请使用 Windows 设置中的“已安装的应用”。', '', '如需助手集成，请使用 ZIP 包内的 scripts/install.ps1 -InstallSkill；变更安装目录后需重新绑定执行助手。', '', '部分 Windows 自带扫描器的算法兼容问题会自动使用已安装 Git for Windows 的扫描器处理；没有可用兼容扫描器时请更新 Git 或 Windows OpenSSH。', '', '连接元数据统一存于 %USERPROFILE%\.server-manager；首次启动迁移旧配置并保留源文件，密码仍保存在 Windows 凭据管理器。', '', '需要 Windows 11、.NET Framework 4.8 和 OpenSSH 客户端，仅支持 Linux 远端。', '', '此为未签名开发构建。Windows 应用控制可能拒绝启动，安装前检查失败时保留现有版本。') | Set-Content -LiteralPath (Join-Path $stage 'README.md') -Encoding UTF8
     & $CompilerPath ("/DPayloadDir=$stage") ("/DChineseLanguageFile=$languageFile") ("/DAppVersion="+$release.version) ("/DOutputDir=$packageRoot") (Join-Path $projectRoot 'build\setup.iss')
     if($LASTEXITCODE){throw "EXE 编译失败，退出码 $LASTEXITCODE。"}
     $setup=Join-Path $packageRoot ("ServerManager-"+$release.version+'-windows-setup-unsigned.exe')

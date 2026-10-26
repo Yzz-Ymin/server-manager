@@ -58,7 +58,7 @@ if($InstallSkill){
 $shell=New-Object -ComObject WScript.Shell
 $links=@((Join-Path ([Environment]::GetFolderPath('Desktop')) '服务器管理.lnk'),(Join-Path ([Environment]::GetFolderPath('Programs')) '服务器管理.lnk'))
 foreach($link in $links){$shortcut=$shell.CreateShortcut($link);$shortcut.TargetPath=Join-Path $installRoot 'ServerManager.exe';$shortcut.WorkingDirectory=$installRoot;$shortcut.IconLocation=(Join-Path $installRoot 'ServerManager.exe')+',0';$shortcut.Description='服务器管理与安全 SSH 访问';$shortcut.Save()}
-@{product='Windows-ServerManager';version='1.1.2';installedAt=(Get-Date -Format o);installDirectory=$installRoot;skillDirectory=$skillRoot;shortcuts=$links} | ConvertTo-Json | Set-Content -LiteralPath $previousFile -Encoding UTF8
+@{product='Windows-ServerManager';version='1.1.3';installedAt=(Get-Date -Format o);installDirectory=$installRoot;skillDirectory=$skillRoot;shortcuts=$links} | ConvertTo-Json | Set-Content -LiteralPath $previousFile -Encoding UTF8
 & (Join-Path $installRoot 'server-access.exe') import-openssh
 if($LASTEXITCODE){throw '应用已安装，SSH 别名导入失败，可在界面中重试。'}
 Write-Output "安装完成：$installRoot"

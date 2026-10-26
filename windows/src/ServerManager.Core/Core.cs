@@ -295,7 +295,37 @@ internal static class Engine {
     static void KillTree(Process process){try{using(var killer=System.Diagnostics.Process.Start(new ProcessStartInfo(Path.Combine(Environment.SystemDirectory,"taskkill.exe"),"/PID "+process.Id+" /T /F"){UseShellExecute=false,CreateNoWindow=true,RedirectStandardOutput=true,RedirectStandardError=true})){killer.WaitForExit(5000);}}catch{}try{if(!process.HasExited)process.Kill();}catch{}}
     internal static string[] KeyLines(string output,string alias){var lines=new List<string>();foreach(var line in output.Split('\n')){var parts=line.Trim().Split(new[]{' ','\t'},StringSplitOptions.RemoveEmptyEntries);if(parts.Length>=3&&(parts[1].StartsWith("ssh-")||parts[1].StartsWith("ecdsa-"))){try{Convert.FromBase64String(parts[2]);lines.Add(alias+" "+parts[1]+" "+parts[2]);}catch(FormatException){}}}return lines.Distinct().ToArray();}
     internal static string ExistingKeys(Profile p){var hosts=Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".ssh","known_hosts");if(!File.Exists(hosts))return null;var host=p.Port==22?p.Host:"["+p.Host+"]:"+p.Port;var result=Process(StartInfo(Ssh("ssh-keygen"),new[]{"-F",host,"-f",hosts}),5);return String.Join("\n",KeyLines(result.Out,p.Alias));}
-    internal static string Scan(Profile p){Store.Validate(p,false);var result=Process(StartInfo(Ssh("ssh-keyscan"),new[]{"-T","8","-p",p.Port.ToString(),"-t","ed25519,ecdsa,rsa",p.Host}),25);var lines=KeyLines(result.Out,p.Alias);if(lines.Length==0)throw new AccessException("KEYSCAN_FAILED","未取得主机公钥。请检查地址、端口和网络。","host-key");return String.Join("\n",lines);}
+    static string GitKeyscan(){
+        foreach(var hive in new[]{Microsoft.Win32.Registry.CurrentUser,Microsoft.Win32.Registry.LocalMachine})foreach(var subkey in new[]{@"SOFTWARE\GitForWindows",@"SOFTWARE\WOW6432Node\GitForWindows"}){
+            try{using(var key=hive.OpenSubKey(subkey)){
+                var root=key==null?null:key.GetValue("InstallPath") as string;if(String.IsNullOrWhiteSpace(root)||!Path.IsPathRooted(root))continue;
+                var candidate=Path.Combine(root,"usr","bin","ssh-keyscan.exe");
+                if(File.Exists(candidate)&&File.Exists(Path.Combine(root,"cmd","git.exe")))return candidate;
+            }}catch(System.Security.SecurityException){}catch(UnauthorizedAccessException){}catch(ArgumentException){}
+        }
+        return null;
+    }
+    internal static string Scan(Profile p){
+        Store.Validate(p,false);var args=new[]{"-T","8","-p",p.Port.ToString(),"-t","ed25519,ecdsa,rsa",p.Host};
+        var result=Process(StartInfo(Ssh("ssh-keyscan"),args),25);
+        return ResolveScan(p,result,()=>{var git=GitKeyscan();return git==null?null:Process(StartInfo(git,args),25);});
+    }
+    internal static string ResolveScan(Profile p,ProcessOutput result,Func<ProcessOutput> compatibleScanner){
+        var lines=KeyLines(result.Out??"",p.Alias);
+        if(lines.Length==0&&(result.Err??"").IndexOf("choose_kex: unsupported KEX method",StringComparison.OrdinalIgnoreCase)>=0){
+            ProcessOutput alternate;
+            try{alternate=compatibleScanner();}catch(Win32Exception){throw new AccessException("KEYSCAN_HELPER_UNAVAILABLE","兼容密钥扫描器无法启动，请检查应用控制或更新 Windows OpenSSH。","host-key");}
+            if(alternate!=null){result=alternate;lines=KeyLines(result.Out??"",p.Alias);}
+        }
+        if(lines.Length>0)return String.Join("\n",lines);
+        var error=(result.Err??"").ToLowerInvariant();string code="KEYSCAN_FAILED",message="未取得主机公钥。请核对地址、端口及 SSH 服务。";
+        if(result.Timeout){code="KEYSCAN_TIMEOUT";message="获取主机公钥超时，请检查 SSH 服务及网络。";}
+        else if(error.Contains("choose_kex: unsupported kex method")){code="KEYSCAN_CLIENT_UNSUPPORTED";message="Windows 自带密钥扫描器不兼容此服务器。请安装或更新 Git for Windows，或更新 Windows OpenSSH 后重试。";}
+        else if(error.Contains("connection refused")){code="CONNECTION_REFUSED";message="SSH 端口拒绝连接，请核对端口和 SSH 服务。";}
+        else if(error.Contains("no matching ")){code="ALGORITHM_MISMATCH";message="主机密钥扫描算法不兼容，请更新客户端或服务器；工具未放宽算法要求。";}
+        else if(error.Contains("getaddrinfo")||error.Contains("could not resolve")||error.Contains("no such host")){code="DNS_FAILED";message="无法解析服务器地址，请检查主机名。";}
+        throw new AccessException(code,message,"host-key");
+    }
     internal static string Fingerprints(string keys){var lines=new List<string>();foreach(var line in keys.Split('\n')){var p=line.Split(' ');using(var sha=SHA256.Create())lines.Add(p[1]+"  SHA256:"+Convert.ToBase64String(sha.ComputeHash(Convert.FromBase64String(p[2]))).TrimEnd('='));}return String.Join("\n",lines);}
     internal static List<string> Options(Profile p,string hosts,bool sftp){var a=new List<string>{"-F","NUL","-o","StrictHostKeyChecking=yes","-o","UserKnownHostsFile=\""+hosts.Replace('\\','/')+"\"","-o","GlobalKnownHostsFile=NUL","-o","HostKeyAlias="+p.Alias,"-o","UpdateHostKeys=no","-o","ConnectTimeout=12","-o","ConnectionAttempts=1","-o","NumberOfPasswordPrompts=1","-o","ServerAliveInterval=10","-o","ServerAliveCountMax=2","-o","ForwardAgent=no","-o","ClearAllForwardings=yes","-o","PermitLocalCommand=no","-o","ControlMaster=no"};
         if(p.Auth=="password")a.AddRange(new[]{"-o","PreferredAuthentications=password,keyboard-interactive","-o","PubkeyAuthentication=no"});

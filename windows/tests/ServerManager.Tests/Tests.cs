@@ -14,7 +14,7 @@ internal static class Tests {
             Fails(()=>Store.ValidateAlias("a\n"),"INVALID_ALIAS","reject newline alias");Fails(()=>Store.ValidateAlias("-bad"),"INVALID_ALIAS","reject SSH option alias");
             var p=new Profile{Alias="test-password",Group="中文分组",Host="127.0.0.1",Port=cfg.Port,User="tester",Auth="password",SudoSame=true};
             var bad=Store.Parse<Profile>(Store.Json(p));bad.Host="localhost\nProxyCommand anything";Fails(()=>Store.Validate(bad,false),"INVALID_HOST","reject SSH config injection");
-            p.HostKeys=Engine.Scan(p);Check(p.HostKeys.Contains("ssh-rsa"),"real OpenSSH keyscan against loopback SSH");Check(Engine.Fingerprints(p.HostKeys).Contains("SHA256:"),"public key fingerprint");
+            p.HostKeys=Engine.Scan(p);Check(p.HostKeys.Contains("ssh-rsa"),"real OpenSSH keyscan against loopback SSH");Check(Engine.Fingerprints(p.HostKeys).Contains("SHA256:"),"public key fingerprint");ScanFallbackTests(p);
             store.Save(p,null,cfg.Password,null,null,false,s=>{});Check(store.List().Count==1,"password SSH + sudo verification and atomic save");
             var old=store.Read(p.Alias);Check(old.SudoSame&&old.SudoRef!=null,"sudo same-password saved");
             Check(!File.ReadAllText(store.ProfilePath(p.Alias)).Contains(cfg.Password),"password absent from JSON");Check(!Directory.GetFiles(cfg.Root,"*",SearchOption.AllDirectories).Any(f=>File.ReadAllText(f).Contains(cfg.Password)),"password absent from configuration files");
@@ -42,6 +42,18 @@ internal static class Tests {
             Console.WriteLine("PASSED "+checks+" checks");return 0;
         }catch(AccessException ex){Console.WriteLine("FAIL "+ex.Code+" "+ex.Message+"\n"+ex.StackTrace);return 1;}catch(Exception ex){Console.WriteLine("FAIL "+ex.Message+"\n"+ex.StackTrace);return 1;}
         finally{try{foreach(var item in store.List())store.Delete(item);store.Recover();}catch{}}
+    }
+    static void ScanFallbackTests(Profile p){
+        const string unsupported="choose_kex: unsupported KEX method sntrup761x25519-sha512@openssh.com";bool retried=false;
+        var keys=Engine.ResolveScan(p,new ProcessOutput{Exit=1,Err=unsupported},()=>{retried=true;return new ProcessOutput{Exit=0,Out=p.HostKeys,Err=""};});
+        Check(retried&&keys==p.HostKeys,"unsupported Windows KEX uses the compatible scanner without changing keys");
+        retried=false;keys=Engine.ResolveScan(p,new ProcessOutput{Exit=0,Out=p.HostKeys},()=>{retried=true;return null;});
+        Check(!retried&&keys==p.HostKeys,"working native keyscan does not invoke another scanner");
+        Fails(()=>Engine.ResolveScan(p,new ProcessOutput{Exit=1,Err=unsupported},()=>null),"KEYSCAN_CLIENT_UNSUPPORTED","missing compatible scanner reports client compatibility rather than password failure");
+        Fails(()=>Engine.ResolveScan(p,new ProcessOutput{Exit=1,Timeout=true},()=>{throw new Exception("unexpected retry");}),"KEYSCAN_TIMEOUT","keyscan timeout is identified");
+        Fails(()=>Engine.ResolveScan(p,new ProcessOutput{Exit=1,Err="Connection refused"},()=>{throw new Exception("unexpected retry");}),"CONNECTION_REFUSED","keyscan connection refusal is identified");
+        Fails(()=>Engine.ResolveScan(p,new ProcessOutput{Exit=1,Err="no matching key exchange method found"},()=>{throw new Exception("unexpected retry");}),"ALGORITHM_MISMATCH","algorithm mismatch never enables weaker algorithms");
+        Fails(()=>Engine.ResolveScan(p,new ProcessOutput{Exit=1,Err=unsupported},()=>{throw new System.ComponentModel.Win32Exception(5);}),"KEYSCAN_HELPER_UNAVAILABLE","blocked compatible scanner reports a local dependency failure");
     }
     static void StdinTest(){
         var executable=Path.Combine(Environment.SystemDirectory,"WindowsPowerShell","v1.0","powershell.exe");
