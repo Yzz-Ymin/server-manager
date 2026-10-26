@@ -1,7 +1,7 @@
 ﻿param([string]$PackagePath,[string]$CompilerPath)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
-if(-not $PackagePath){$PackagePath=Join-Path (Split-Path $projectRoot -Parent) 'packages\windows\ServerManager-1.1.0-windows-unsigned.zip'}
+if(-not $PackagePath){$PackagePath=Join-Path (Split-Path $projectRoot -Parent) 'packages\windows\ServerManager-1.1.1-windows-unsigned.zip'}
 $archive=(Resolve-Path -LiteralPath $PackagePath).Path
 if(-not $CompilerPath){
     $command=Get-Command ISCC.exe -ErrorAction SilentlyContinue

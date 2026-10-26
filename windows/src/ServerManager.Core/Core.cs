@@ -98,7 +98,14 @@ public sealed class Store {
     }
     internal string ProfilePath(string alias){ValidateAlias(alias);return Path.Combine(Root,"profiles",alias+".json");}
     public List<Profile> List(){using(Lock())return ListUnlocked();}
-    internal List<Profile> ListUnlocked(){var dir=Path.Combine(Root,"profiles"); if(!Directory.Exists(dir))return new List<Profile>(); return Directory.GetFiles(dir,"*.json").Select(f=>Read(Path.GetFileNameWithoutExtension(f))).OrderBy(p=>p.GroupLabel).ThenBy(p=>p.Alias).ToList();}
+    internal List<Profile> ListUnlocked(){
+        var dir=Path.Combine(Root,"profiles");string[] files;
+        try{files=Directory.GetFiles(dir,"*.json");}
+        catch(DirectoryNotFoundException){if(File.Exists(dir))throw new AccessException("CONFIG_READ_FAILED","连接配置路径不是目录，请检查配置目录。","storage");return new List<Profile>();}
+        catch(UnauthorizedAccessException){throw new AccessException("CONFIG_READ_DENIED","无法读取已保存连接，请检查配置目录权限；现有配置未修改。","storage");}
+        catch(IOException){throw new AccessException("CONFIG_READ_FAILED","无法读取连接配置目录，请检查文件状态后重试；现有配置未修改。","storage");}
+        return files.Select(f=>Read(Path.GetFileNameWithoutExtension(f))).OrderBy(p=>p.GroupLabel).ThenBy(p=>p.Alias).ToList();
+    }
     public Profile Read(string alias){var path=ProfilePath(alias);if(!File.Exists(path))throw new AccessException("PROFILE_MISSING","未配置该别名，请打开配置窗口。");var p=Parse<Profile>(File.ReadAllText(path,Encoding.UTF8));Validate(p,false);if(p.Alias!=alias)throw new AccessException("INVALID_PROFILE","别名与配置文件不一致。");return p;}
     public static void ValidateAlias(string alias){if(alias==null||!Regex.IsMatch(alias,@"\A[A-Za-z0-9][A-Za-z0-9_-]{0,63}\z"))throw new AccessException("INVALID_ALIAS","别名须为 1–64 位英文字母、数字、下划线或短横线，首位须为字母或数字。");}
     public static void Validate(Profile p,bool checkKey=true){

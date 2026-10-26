@@ -41,7 +41,7 @@ EXE 与校验清单位于 `artifacts/packages`。构建会下载固定版本的�
 
 ## 签名与应用控制
 
-默认生成 `ServerManager-1.1.0-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。
+默认生成 `ServerManager-1.1.1-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。
 
 具备受信任代码签名证书后，可通过 `scripts/sign.ps1` 使用证书指纹和时间戳服务签名，再运行 `scripts/package.ps1 -RequireSigned` 生成带签名校验的发布包。签名工具使用 Windows SDK 的 SignTool，不接收或导出私钥。详情见 [微软代码签名说明](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/code-signing-for-smart-app-control)。
 

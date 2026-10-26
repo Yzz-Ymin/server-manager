@@ -1,7 +1,7 @@
 ﻿param([ValidateSet('Debug','Release')][string]$Configuration='Release',[switch]$RequireSigned)
 $ErrorActionPreference='Stop'
 $projectRoot=Split-Path $PSScriptRoot -Parent
-$version='1.1.0'
+$version='1.1.1'
 $licensePath=Join-Path (Split-Path $projectRoot -Parent) 'LICENSE'
 if(-not(Test-Path -LiteralPath $licensePath)){throw '缺少仓库根目录 LICENSE，请使用完整源码构建。'}
 if(-not $RequireSigned){& (Join-Path $PSScriptRoot 'build.ps1') -Configuration $Configuration}
