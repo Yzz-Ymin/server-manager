@@ -6,7 +6,7 @@ using System.Text;
 namespace ServerManager {
 internal static class CliProgram {
     public static int Main(string[] args){Console.OutputEncoding=new UTF8Encoding(false);Console.InputEncoding=new UTF8Encoding(false);
-        try{var store=new Store();if(args.Length==0||args[0]=="--help"){Console.WriteLine("server-access list --json | configure [--alias NAME] | run ALIAS OP [--timeout SEC] | once ALIAS --request-stdin | ssh ALIAS | sftp ALIAS | import-openssh");return 0;}
+        try{if(args.Length==0||args[0]=="--help"){Console.WriteLine("server-access list --json | configure [--alias NAME] | run ALIAS OP [--timeout SEC] | once ALIAS --request-stdin | ssh ALIAS | sftp ALIAS | import-openssh");return 0;}var store=new Store();
             if(args[0]=="list"){var profiles=store.List().Select(p=>new{alias=p.Alias,group=p.GroupLabel,host=p.Host,user=p.User,port=p.Port,remoteType="linux",auth=p.Auth,operations=new[]{"status","sudo-check"}.Concat(p.Operations.Keys).Distinct().ToArray()});Console.WriteLine(Store.Json(new{success=true,profiles=profiles}));return 0;}
             if(args[0]=="configure"){var i=Array.IndexOf(args,"--alias");string alias=i<0?null:args.ElementAtOrDefault(i+1);if(i>=0)Store.ValidateAlias(alias);var start=new ProcessStartInfo(Path.Combine(Engine.Bin,"ServerManager.exe"),alias==null?"--configure":Engine.Args(new[]{"--configure",alias})){UseShellExecute=true};Process.Start(start);Console.WriteLine(Store.Json(new{success=true,stage="configuration",code="GUI_OPENED",message="已打开原生配置窗口，请用户在窗口中填写。"}));return 0;}
             if(args[0]=="import-openssh"){Console.WriteLine(Store.Json(new{success=true,imported=store.ImportOpenSsh()}));return 0;}

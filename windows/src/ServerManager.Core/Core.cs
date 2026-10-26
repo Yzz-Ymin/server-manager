@@ -84,7 +84,36 @@ internal static class Vault {
 public sealed class Store {
     public readonly string Root;
     internal readonly string Prefix;
-    public Store():this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"ServerManager"),"ServerManager/"){}
+    public Store():this(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),".server-manager"),"ServerManager/"){
+        if(!File.Exists(Path.Combine(Root,"migration.json")))MigrateLegacy(LegacyRoots());
+    }
+    static IEnumerable<string> LegacyRoots(){
+        var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        var roots=new List<string>{Path.Combine(local,"ServerManager")};
+        var packages=Path.Combine(local,"Packages");
+        if(Directory.Exists(packages))foreach(var package in Directory.GetDirectories(packages)){
+            var candidate=Path.Combine(package,"LocalCache","Local","ServerManager");
+            if(Directory.Exists(Path.Combine(candidate,"profiles")))roots.Add(candidate);
+        }
+        return roots;
+    }
+    internal void MigrateLegacy(IEnumerable<string> roots){using(Lock()){
+        var marker=Path.Combine(Root,"migration.json");if(File.Exists(marker))return;
+        var pending=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+        foreach(var root in roots.Select(Path.GetFullPath).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(v=>v,StringComparer.OrdinalIgnoreCase)){
+            if(String.Equals(root,Root,StringComparison.OrdinalIgnoreCase))continue;
+            var legacy=new Store(root,Prefix);using(legacy.Lock())foreach(var profile in legacy.ListUnlocked()){
+                string text=File.ReadAllText(legacy.ProfilePath(profile.Alias),Encoding.UTF8),previous;
+                var destination=ProfilePath(profile.Alias);
+                if((pending.TryGetValue(profile.Alias,out previous)&&previous!=text)||(File.Exists(destination)&&File.ReadAllText(destination,Encoding.UTF8)!=text))
+                    throw new AccessException("CONFIG_MIGRATION_CONFLICT","旧配置存在同名但内容不同的连接："+profile.Alias+"。未覆盖现有记录，请先备份并核对旧配置。","storage");
+                pending[profile.Alias]=text;
+            }
+        }
+        PrivateDirectory(Root);PrivateDirectory(Path.Combine(Root,"profiles"));int copied=0;
+        foreach(var item in pending)if(!File.Exists(ProfilePath(item.Key))){AtomicWrite(ProfilePath(item.Key),item.Value);copied++;}
+        AtomicWrite(marker,Json(new{storageVersion=2,migratedProfiles=copied,completedUtc=DateTime.UtcNow.ToString("o")}));
+    }}
     internal Store(string root,string prefix){Root=Path.GetFullPath(root);Prefix=prefix;}
     internal static string Digest(string s){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(s))).Replace("-","").Substring(0,24);}
     public static string Json(object o){return new JavaScriptSerializer{MaxJsonLength=4*1024*1024}.Serialize(o);}

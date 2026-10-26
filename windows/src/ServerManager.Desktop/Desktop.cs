@@ -135,7 +135,7 @@ internal static class DesktopProgram {
             if(!first){try{using(var client=new NamedPipeClientStream(".",channel,PipeDirection.Out)){client.Connect(5000);using(var writer=new BinaryWriter(client))writer.Write(request);}return 0;}catch{return 1;}}
             if(request=="quit")return 0;
             var app=new Application{ShutdownMode=ShutdownMode.OnMainWindowClose};MainWindow main;
-            try{main=new MainWindow();}catch(Exception){MessageBox.Show("无法打开服务器管理，请检查安装文件和本机配置。","服务器管理");return 1;}
+            try{main=new MainWindow();}catch(AccessException ex){MessageBox.Show(ex.Message,"服务器管理");return 1;}catch(Exception){MessageBox.Show("无法打开服务器管理，请检查安装文件和本机配置。","服务器管理");return 1;}
             bool stopped=false;NamedPipeServerStream active=null;
             var listener=Task.Run(()=>{while(!stopped){try{var acl=new PipeSecurity();acl.AddAccessRule(new PipeAccessRule(WindowsIdentity.GetCurrent().User,PipeAccessRights.FullControl,AccessControlType.Allow));using(var pipe=new NamedPipeServerStream(channel,PipeDirection.In,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous,4096,4096,acl)){active=pipe;pipe.WaitForConnection();using(var reader=new BinaryReader(pipe)){string cmd=reader.ReadString();if(cmd.Length<=128)app.Dispatcher.BeginInvoke((Action)(()=>main.ActivateRequest(cmd)));}}}catch(IOException){}catch(ObjectDisposedException){}finally{active=null;}}});
             main.Loaded+=(s,e)=>{if(request.StartsWith("edit:"))app.Dispatcher.BeginInvoke((Action)(()=>main.ActivateRequest(request)));};

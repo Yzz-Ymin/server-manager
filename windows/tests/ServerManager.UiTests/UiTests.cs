@@ -39,7 +39,21 @@ internal static class UiTests {
         Check(Field<ListView>(main,"list").Items.Count==4,"full exit and fresh window preserve saved connections");Quit(main);
         var absent=new Store(Path.Combine(args[0],"absent-"+Guid.NewGuid().ToString("N")),"ServerManagerTest/UI/");Check(absent.List().Count==0,"new installation has an empty connection list");
         Directory.CreateDirectory(absent.Root);File.WriteAllText(Path.Combine(absent.Root,"profiles"),"synthetic path obstruction");bool reported=false;try{absent.List();}catch(AccessException ex){reported=ex.Code=="CONFIG_READ_FAILED";}
-        Check(reported,"invalid configuration directory reports an error instead of an empty list");app.Shutdown();
+        Check(reported,"invalid configuration directory reports an error instead of an empty list");
+        var legacyB=new Store(Path.Combine(args[0],"legacy-"+Guid.NewGuid().ToString("N")),"ServerManagerTest/UI/");Directory.CreateDirectory(Path.Combine(legacyB.Root,"profiles"));
+        string originalText=File.ReadAllText(persisted.ProfilePath("saved-1"));Store.AtomicWrite(legacyB.ProfilePath("saved-1"),originalText);
+        var fifth=new Profile{Alias="saved-5",Host="127.0.0.1",User="tester",Auth="password"};Store.AtomicWrite(legacyB.ProfilePath(fifth.Alias),Store.Json(fifth));
+        var migrated=new Store(Path.Combine(args[0],"shared-"+Guid.NewGuid().ToString("N")),"ServerManagerTest/UI/");migrated.MigrateLegacy(new[]{persisted.Root,legacyB.Root});
+        Check(migrated.List().Count==5,"migration merges normal and isolated legacy data without duplicate aliases");
+        Check(File.ReadAllText(migrated.ProfilePath("saved-1"))==originalText&&persisted.List().Count==4&&legacyB.List().Count==2,"migration preserves profile bytes and keeps both legacy sources");
+        File.Delete(migrated.ProfilePath("saved-1"));migrated.MigrateLegacy(new[]{persisted.Root,legacyB.Root});
+        Check(migrated.List().Count==4&&!File.Exists(migrated.ProfilePath("saved-1")),"completed migration never resurrects deleted connections");
+        var changed=legacyB.Read("saved-1");changed.Host="127.0.0.2";Store.AtomicWrite(legacyB.ProfilePath(changed.Alias),Store.Json(changed));
+        var conflict=new Store(Path.Combine(args[0],"conflict-"+Guid.NewGuid().ToString("N")),"ServerManagerTest/UI/");bool collision=false;try{conflict.MigrateLegacy(new[]{persisted.Root,legacyB.Root});}catch(AccessException ex){collision=ex.Code=="CONFIG_MIGRATION_CONFLICT";}
+        Check(collision&&conflict.List().Count==0&&!File.Exists(Path.Combine(conflict.Root,"migration.json")),"conflicting legacy profiles abort before copying or marking migration complete");
+        var resumed=new Store(Path.Combine(args[0],"resume-"+Guid.NewGuid().ToString("N")),"ServerManagerTest/UI/");Directory.CreateDirectory(Path.Combine(resumed.Root,"profiles"));Store.AtomicWrite(resumed.ProfilePath("saved-1"),originalText);resumed.MigrateLegacy(new[]{persisted.Root});
+        Check(resumed.List().Count==4,"interrupted migration resumes without replacing already copied profiles");
+        main=new MainWindow(new Store(resumed.Root,"ServerManagerTest/UI/"));main.Show();Flush();Check(Field<ListView>(main,"list").Items.Count==4,"fresh window reads the shared migrated store");Quit(main);app.Shutdown();
         Console.WriteLine("PASSED "+count+" UI state checks");return 0;
     }catch(Exception ex){Console.WriteLine("FAIL "+ex.Message);return 1;}}
 }

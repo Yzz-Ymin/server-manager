@@ -41,13 +41,15 @@ EXE 与校验清单位于 `artifacts/packages`。构建会下载固定版本的�
 
 ## 签名与应用控制
 
-默认生成 `ServerManager-1.1.1-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。
+默认生成 `ServerManager-1.1.2-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。
 
 具备受信任代码签名证书后，可通过 `scripts/sign.ps1` 使用证书指纹和时间戳服务签名，再运行 `scripts/package.ps1 -RequireSigned` 生成带签名校验的发布包。签名工具使用 Windows SDK 的 SignTool，不接收或导出私钥。详情见 [微软代码签名说明](https://learn.microsoft.com/en-us/windows/apps/develop/smart-app-control/code-signing-for-smart-app-control)。
 
 ## 使用
 
 打开“服务器管理”，新增连接、选择认证方式并填写凭据。保存时独立核对主机指纹，验证成功后提交。编辑时密码留空保留匹配的旧值；私钥口令与 sudo 密码分开管理。
+
+连接元数据统一存储在 `%USERPROFILE%\.server-manager`，桌面、启动器与助手使用同一份数据。首次启动会合并旧 AppData 目录及应用容器缓存中的本工具配置，保留旧文件；同名但内容不同的记录会明确报错并停止迁移，不自动覆盖。密码仍由 Windows 凭据管理器保管，不写入配置。
 
 支持导入已有 SSH 别名及已知主机公钥，复用 SSH Agent；不导入跳板机或高级代理配置。密码保存在当前用户的 Windows 凭据管理器，不写入普通配置。关闭窗口后驻留托盘，退出入口仅在托盘菜单。
 
