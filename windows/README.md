@@ -27,6 +27,18 @@ Windows 11、.NET Framework 4.8 和 Windows OpenSSH 客户端。可用 Visual St
 
 安装包与 `SHA256SUMS` 校验文件位于 `artifacts/packages`，包内包含仓库 MIT 许可证。将生成的 ZIP 复制到目标主机，解压后执行其中的 `scripts/install.ps1`，无需重新构建。完整仓库复制后也可使用相同构建命令，不依赖固定盘符或用户名。
 
+### EXE 安装向导
+
+预构建 EXE 位于仓库 `packages/windows`，可直接双击运行。安装前从托盘退出应用；向导默认使用现有快捷方式中的安装目录，也可自行选择目录。卸载使用 Windows 设置中的“已安装的应用”。更新与卸载保留用户连接配置和凭据。
+
+使用 [Inno Setup 6.7.3 或更高版本](https://jrsoftware.org/isdl.php) 将 ZIP 包封装成可双击的 EXE：
+
+```powershell
+.\scripts\package-exe.ps1 -PackagePath <ZIP包路径> -CompilerPath <ISCC.exe路径>
+```
+
+EXE 与校验清单位于 `artifacts/packages`。构建会下载固定版本的官方简体中文语言资源并校验 SHA-256；EXE 包不依赖目标主机的 PowerShell 执行策略。它仍会检查应用控制，不会跳过系统拦截。助手集成继续使用 ZIP 中的安装脚本。
+
 ## 签名与应用控制
 
 默认生成 `ServerManager-1.1.0-windows-unsigned.zip` 开发包。启用 Smart App Control 或企业应用控制的主机可能拒绝运行未签名 EXE/DLL；本地编译不等于受信任发布。安装器会先验证新版能否启动，失败时保留原安装。

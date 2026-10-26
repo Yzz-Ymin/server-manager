@@ -8,3 +8,5 @@
 *.icns binary
 .gitattributes text eol=lf
 SHA256SUMS text eol=lf
+*.exe binary
+*.iss text eol=lf
